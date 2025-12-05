@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI Dice</title>
+<style>
+  body {
+    font-family: 'Courier New', monospace;
+    background: #1e1e1e;
+    color: #dcdcdc;
+    text-align: center;
+    padding: 20px;
+    image-rendering: pixelated;
+  }
+  .container {
+    max-width: 400px;
+    margin: auto;
+    background: #2b2b2b;
+    padding: 20px;
+    border: 3px solid #3f3f3f;
+    border-radius: 10px;
+    box-shadow: 0 0 10px #000;
+  }
+  button {
+    font-family: inherit;
+    font-size: 18px;
+    padding: 10px 20px;
+    background: #444;
+    color: white;
+    border: 2px solid #666;
+    cursor: pointer;
+    margin: 5px;
+  }
+  button:hover {
+    background: #555;
+  }
+  .section {
+    margin-top: 20px;
+    background:#252525;
+    padding:15px;
+    border:2px solid #444;
+  }
+  .achievement {
+    background:#333;
+    padding:5px;
+    margin:5px 0;
+    border-left:4px solid gold;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🎲 AI Dice</h1>
+  <h3>Level: <span id="level">1</span></h3>
+  <h3>EXP: <span id="exp">0</span> / <span id="expNeeded">20</span></h3>
+  <h2>Points: <span id="points">0</span></h2>
+  <h2>Dice Power: <span id="dicePower">1</span></h2>
+
+  <button onclick="rollDice()">ROLL 🎲</button>
+
+  <div class="section">
+    <h3>Upgrades</h3>
+    <button onclick="buyDiceUpgrade()">Upgrade Dice (+power) - <span id="diceCost">10</span></button>
+  </div>
+
+  <div class="section">
+    <h3>Prestige</h3>
+    <p>Prestige resets your level & upgrades for a permanent multiplier</p>
+    <button onclick="prestige()">Prestige (Requires Level 25)</button>
+    <p>Multiplier: <span id="prestigeMult">1</span>x</p>
+  </div>
+
+  <div class="section">
+    <h3>Stats</h3>
+    <p>Total Rolls: <span id="totalRolls">0</span></p>
+    <p>Highest Roll: <span id="highestRoll">0</span></p>
+  </div>
+
+  <div class="section">
+    <h3>Achievements</h3>
+    <div id="achievements"></div>
+  </div>
+</div>
+
+<script>
+let points = 0;
+let dicePower = 1;
+let diceUpgradeCost = 10;
+let level = 1;
+let exp = 0;
+let expNeeded = 20;
+let prestigeMultiplier = 1;
+let totalRolls = 0;
+let highestRoll = 0;
+
+let achievementsUnlocked = [];
+const achievementList = [
+  { id: 1, name: "First Roll", condition: () => totalRolls >= 1 },
+  { id: 2, name: "High Roller", condition: () => highestRoll >= 12 },
+  { id: 3, name: "Level 10!", condition: () => level >= 10 },
+  { id: 4, name: "100 Rolls", condition: () => totalRolls >= 100 }
+];
+
+function updateUI() {
+  document.getElementById('points').textContent = points;
+  document.getElementById('dicePower').textContent = dicePower;
+  document.getElementById('diceCost').textContent = diceUpgradeCost;
+  document.getElementById('level').textContent = level;
+  document.getElementById('exp').textContent = exp;
+  document.getElementById('expNeeded').textContent = expNeeded;
+  document.getElementById('prestigeMult').textContent = prestigeMultiplier;
+  document.getElementById('totalRolls').textContent = totalRolls;
+  document.getElementById('highestRoll').textContent = highestRoll;
+}
+
+function rollDice() {
+  let roll = Math.floor(Math.random() * (6 * dicePower)) + 1;
+
+  totalRolls++;
+  highestRoll = Math.max(highestRoll, roll);
+
+  points += roll * prestigeMultiplier;
+  gainEXP(3);
+  checkAchievements();
+  updateUI();
+}
+
+function gainEXP(amount) {
+  exp += amount;
+  if (exp >= expNeeded) {
+    exp -= expNeeded;
+    level++;
+    expNeeded = Math.floor(expNeeded * 1.2);
+    checkAchievements();
+  }
+}
+
+function buyDiceUpgrade() {
+  if (points >= diceUpgradeCost) {
+    points -= diceUpgradeCost;
+    dicePower++;
+    diceUpgradeCost = Math.floor(diceUpgradeCost * 1.5);
+    updateUI();
+  }
+}
+
+function prestige() {
+  if (level < 25) return;
+
+  prestigeMultiplier += 1;
+
+  // Reset
+  points = 0;
+  dicePower = 1;
+  diceUpgradeCost = 10;
+  level = 1;
+  exp = 0;
+  expNeeded = 20;
+
+  updateUI();
+}
+
+function checkAchievements() {
+  achievementList.forEach(a => {
+    if (!achievementsUnlocked.includes(a.id) && a.condition()) {
+      achievementsUnlocked.push(a.id);
+      let div = document.createElement('div');
+      div.className = 'achievement';
+      div.textContent = a.name;
+      document.getElementById('achievements').appendChild(div);
+    }
+  });
+}
+
+updateUI();
+</script>
+</body>
+</html>
