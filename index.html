@@ -1,462 +1,220 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>AI Dice</title>
-<style>
-  /* ---------- PIXELATED / RETRO THEME ---------- */
-  :root{
-    --bg:#0f0f17; --panel:#161621; --accent:#6be3ff; --muted:#9aa0a6; --gold:#ffd166;
-  }
-  html,body{height:100%;margin:0;background:var(--bg);font-family: 'Courier New', monospace;color:var(--muted);}
-  .wrap{max-width:720px;margin:18px auto;padding:12px;image-rendering:pixelated}
-  .panel{background:linear-gradient(180deg,var(--panel),#111);border:4px solid #222;padding:14px;border-radius:8px;box-shadow:0 6px 0 #000}
-
-  h1{color:var(--accent);font-size:26px;margin:0 0 6px}
-  .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
-  .col{flex:1}
-
-  /* big stats */
-  .bigstat{background:#0c0c10;border:3px solid #222;padding:10px;border-radius:6px;font-size:18px;color:#e6f7ff}
-  .center{display:flex;flex-direction:column;align-items:center}
-
-  button{background:#1f1f2a;color:var(--muted);border:2px solid #2b2b35;padding:8px 12px;border-radius:4px;cursor:pointer;font-weight:700}
-  button.primary{background:linear-gradient(180deg,#1ce1ff22,#1693a8);color:#002b33;border-color:#0aa2b6}
-  button.buy{background:#2b2630;border-color:#4b3b55;color:var(--gold)}
-  button:active{transform:translateY(1px)}
-
-  /* pixel dice canvas */\  
-  #diceCanvas{background:#000;border:3px solid #222;image-rendering:pixelated;width:128px;height:128px}
-
-  /* shop */
-  .shop{margin-top:12px}
-  .shopItem{display:flex;justify-content:space-between;padding:8px;border:2px solid #1b1b20;background:#0b0b0f;margin-bottom:8px}
-
-  /* achievements */
-  .achievements{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-top:10px}
-  .ach{background:#091018;border:2px solid #133244;padding:8px;border-radius:4px;color:#9ad8ff}
-  .ach.lock{opacity:0.35;color:#334}
-
-  /* stats list */
-  .small{font-size:13px;color:var(--muted)}
-
-  /* upgrade / prestige panel */
-  .prestige{background:#0b0;}
-
-  /* tiny retro pixels for flavour */
-  .pixel{font-size:12px;color:#7fffd4}
-
-  footer{margin-top:12px;color:#223}
-
-  @media(max-width:520px){#diceCanvas{width:96px;height:96px}}
-</style>
+  <meta charset="UTF-8" />
+  <title>AI Dice</title>
+  <style>
+    body {
+      background:#1b1d1e;
+      color:white;
+      font-family:"Press Start 2P", monospace;
+      image-rendering:pixelated;
+      text-align:center;
+      margin:0;
+    }
+    #game {
+      width:900px;
+      margin:auto;
+      padding:20px;
+    }
+    .panel {
+      background:#26282b;
+      padding:10px;
+      margin:10px 0;
+      border:4px solid #3d3f42;
+      border-radius:6px;
+    }
+    button {
+      background:#3d3f42;
+      border:3px solid #6f7175;
+      padding:10px;
+      font-family:"Press Start 2P";
+      color:white;
+      cursor:pointer;
+      margin:5px;
+    }
+    button:hover { background:#5a5c60; }
+    canvas { image-rendering:pixelated; }
+  </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="panel center">
-      <h1>🎲 AI Dice</h1>
-      <div class="row" style="align-items:center;margin-top:8px">
-        <div class="col center">
-          <canvas id="diceCanvas" width="32" height="32"></canvas>
-          <div style="height:6px"></div>
-          <button id="rollBtn" class="primary">ROLL</button>
-        </div>
-        <div class="col">
-          <div class="bigstat">Points: <span id="points">0</span></div>
-          <div style="height:8px"></div>
-          <div class="bigstat">Level: <span id="level">1</span> &nbsp; XP: <span id="xp">0</span>/<span id="xpNeeded">20</span></div>
-        </div>
-        <div class="col">
-          <div class="bigstat">Prestige: x<span id="prestigeMult">1</span></div>
-          <div style="height:6px"></div>
-          <div class="bigstat">Dice Power: <span id="dicePower">1</span></div>
-        </div>
-      </div>
+<div id="game">
+  <h1>AI Dice</h1>
+  
+  <canvas id="diceCanvas" width="128" height="128"></canvas>
+  <br>
+  <button id="rollBtn">ROLL</button>
 
-      <div class="row" style="margin-top:12px">
-        <div class="col">
-          <div class="shop panel" style="padding:8px">
-            <h3 style="margin:0;color:var(--gold)">Shop</h3>
-            <div class="shopItem">
-              <div>
-                <strong>Upgrade Dice</strong><div class="small">Increase dice power (bigger rolls)</div>
-              </div>
-              <div style="text-align:right">
-                <div class="pixel">Cost: <span id="diceCost">50</span></div>
-                <button class="buy" id="buyDiceBtn">BUY</button>
-              </div>
-            </div>
-
-            <div class="shopItem">
-              <div>
-                <strong>Bonus +1</strong><div class="small">Adds flat bonus to every roll</div>
-              </div>
-              <div style="text-align:right">
-                <div class="pixel">Cost: <span id="bonusCost">30</span></div>
-                <button class="buy" id="buyBonusBtn">BUY</button>
-              </div>
-            </div>
-
-            <div class="shopItem">
-              <div>
-                <strong>Auto-roll</strong><div class="small">Automatically rolls every 2s</div>
-              </div>
-              <div style="text-align:right">
-                <div class="pixel">Cost: <span id="autoCost">350</span></div>
-                <button class="buy" id="buyAutoBtn">BUY</button>
-              </div>
-            </div>
-
-            <div class="shopItem">
-              <div>
-                <strong>Crit Chance +5%</strong><div class="small">Chance to double roll value</div>
-              </div>
-              <div style="text-align:right">
-                <div class="pixel">Cost: <span id="critCost">120</span></div>
-                <button class="buy" id="buyCritBtn">BUY</button>
-              </div>
-            </div>
-
-          </div>
-        </div>
-
-        <div class="col">
-          <div class="panel" style="padding:8px;text-align:left">
-            <h3 style="margin:0;color:var(--gold)">Stats</h3>
-            <div class="small">Total Rolls: <span id="totalRolls">0</span></div>
-            <div class="small">Highest Single Roll: <span id="highestRoll">0</span></div>
-            <div class="small">Total XP Earned: <span id="totalXP">0</span></div>
-            <div style="height:8px"></div>
-            <button id="saveBtn">Save</button>
-            <button id="loadBtn">Load</button>
-            <button id="resetBtn">Reset</button>
-          </div>
-
-          <div class="panel" style="margin-top:8px;padding:8px">
-            <h3 style="margin:0;color:var(--gold)">Prestige</h3>
-            <div class="small">Prestige resets progress but grants permanent multiplier based on highest level reached.</div>
-            <div style="height:6px"></div>
-            <button id="prestigeBtn">Prestige (requires level 25)</button>
-          </div>
-        </div>
-      </div>
-
-      <div style="width:100%;margin-top:12px;text-align:left">
-        <h3 style="color:var(--gold);margin:6px 0">Achievements</h3>
-        <div class="achievements" id="achievements"></div>
-      </div>
-
-      <div style="height:8px"></div>
-      <div id="message" class="small"></div>
-
-    </div>
-
-    <footer style="text-align:center;color:#123;margin-top:10px">Retro pixel idle by AI — enjoy!</footer>
+  <div class="panel" id="infoPanel">
+    <div id="points">Points: 0</div>
+    <div id="level">Level: 1</div>
+    <div id="xp">XP: 0</div>
+    <div id="prestige">Prestige: 0</div>
   </div>
 
+  <div class="panel" id="shopPanel">
+    <h2>Upgrades</h2>
+    <button id="upgradeDice">Upgrade Dice (Cost: 10)</button><br>
+    <button id="buyHelper">Hire Helper Hand (Cost: 25)</button><br>
+  </div>
+
+  <div class="panel" id="helpersPanel">
+    <h2>Helpers</h2>
+    <div id="helpers">0 helpers</div>
+  </div>
+
+  <div class="panel" id="achievementsPanel">
+    <h2>Achievements</h2>
+    <div id="achievements"></div>
+  </div>
+
+  <button onclick="resetGame()">RESET SAVE</button>
+</div>
+
 <script>
-// ---------- GAME STATE ----------
-const SAVE_KEY = 'AIDice_Idle_v1';
-let state = {
-  points:0,
-  dicePower:1,
-  bonus:0,
-  crit:0,
-  auto:false,
-  autoIntervalId:null,
-  level:1,
-  xp:0,
-  xpNeeded:20,
-  totalRolls:0,
-  highestRoll:0,
-  totalXP:0,
-  prestigeMult:1,
-  bestLevel:1,
-  // shop costs
-  costs:{dice:50,bonus:30,auto:350,crit:120}
-};
+// ==========================
+// BASIC GAME VARIABLES
+// ==========================
+let points = 0;
+let diceLevel = 1;
+let helpers = 0;
+let level = 1;
+let xp = 0;
+let prestige = 0;
 
-// ---------- ELEMENTS ----------
-const el = id => document.getElementById(id);
-const diceCanvas = el('diceCanvas');
-const ctx = diceCanvas.getContext('2d');
+let upgradeDiceCost = 10;
+let helperCost = 25;
 
-// ---------- PIXEL DICE ART (drawn into small canvas) ----------
-function drawDiceFace(value){
-  // 32x32 canvas — each 'pixel' 4x4 if scaled to 128 but we use pixelated rendering via CSS
-  ctx.fillStyle = '#000';
-  ctx.fillRect(0,0,32,32);
+// ==========================
+// CANVAS PIXEL DICE RENDER
+// ==========================
+const canvas = document.getElementById("diceCanvas");
+const ctx = canvas.getContext("2d");
 
-  // draw box
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(3,3,26,26);
-  ctx.fillStyle = '#000000';
-  ctx.fillRect(5,5,22,22);
+function drawDiceFace(value) {
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0,0,128,128);
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(8,8,112,112);
+  ctx.fillStyle = "#000";
 
-  // draw pips depending on value (simple mapping using positions)
-  ctx.fillStyle = '#9ad8ff';
-  const pip = (x,y)=> ctx.fillRect(x,y,3,3);
-  const positions = {
-    1:[[14,14]],
-    2:[[8,8],[20,20]],
-    3:[[8,8],[14,14],[20,20]],
-    4:[[8,8],[8,20],[20,8],[20,20]],
-    5:[[8,8],[8,20],[20,8],[20,20],[14,14]],
-    6:[[8,8],[8,14],[8,20],[20,8],[20,14],[20,20]]
+  const dots = {
+    1:[[64,64]],
+    2:[[40,40],[88,88]],
+    3:[[40,40],[64,64],[88,88]],
+    4:[[40,40],[40,88],[88,40],[88,88]],
+    5:[[40,40],[40,88],[64,64],[88,40],[88,88]],
+    6:[[40,40],[40,64],[40,88],[88,40],[88,64],[88,88]]
   };
-  const pts = positions[Math.max(1,Math.min(6,value))];
-  if(pts) pts.forEach(p=>pip(p[0],p[1]));
-}
 
-// animate dice roll (flip frames)
-function animateDiceRoll(finalValue, cb){
-  let frames = 8; let i=0;
-  const anim = setInterval(()=>{
-    const v = Math.floor(Math.random()*6)+1;
-    drawDiceFace(v);
-    i++;
-    if(i>=frames){
-      clearInterval(anim);
-      drawDiceFace(finalValue);
-      if(cb) cb();
-    }
-  },60);
-}
-
-// ---------- SOUND (tiny retro blips via WebAudio) ----------
-let audioCtx=null;
-function beep(freq,duration=0.08,volume=0.06){
-  if(!audioCtx) audioCtx=new(window.AudioContext||window.webkitAudioContext)();
-  const o=audioCtx.createOscillator();
-  const g=audioCtx.createGain();
-  o.connect(g); g.connect(audioCtx.destination);
-  o.type='square'; o.frequency.value=freq; g.gain.value=volume;
-  o.start();
-  g.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+duration);
-  setTimeout(()=>o.stop(),duration*1000+20);
-}
-
-// ---------- GAME LOGIC ----------
-function roll(){
-  // base roll 1..6 scaled by dice power
-  const baseMax = 6 * state.dicePower;
-  const raw = Math.floor(Math.random()*baseMax)+1;
-  const isCrit = Math.random() < state.crit/100;
-  const value = isCrit ? raw*2 : raw;
-  const total = value + state.bonus;
-
-  // animate then apply
-  animateDiceRoll(Math.max(1,Math.min(6,Math.floor(value/Math.max(1,state.dicePower)))) , ()=>{});
-
-  state.points += Math.floor(total * state.prestigeMult);
-  state.totalRolls++;
-  state.highestRoll = Math.max(state.highestRoll, value);
-  const xpGain = Math.max(1, Math.floor(3 + state.level/2));
-  gainXP(xpGain);
-  state.totalXP += xpGain;
-
-  // sound
-  beep(200 + Math.min(1200, total*20),0.06,0.04);
-
-  // update UI & save
-  render();
-  saveStateDebounced();
-  checkAchievements();
-}
-
-function gainXP(amount){
-  state.xp += amount;
-  while(state.xp >= state.xpNeeded){
-    state.xp -= state.xpNeeded;
-    state.level++;
-    state.bestLevel = Math.max(state.bestLevel, state.level);
-    // rewards
-    state.bonus += 1;
-    state.dicePower += 1;
-    state.xpNeeded = Math.floor(state.xpNeeded * 1.4);
-    // level up jingle
-    beep(900,0.15,0.06);
-    showMessage('⭐ LEVEL UP! Now level '+state.level);
-  }
-}
-
-function buy(type){
-  const cost = state.costs[type];
-  if(state.points < cost) { showMessage('Not enough points'); return; }
-  state.points -= cost;
-  if(type==='dice'){
-    state.dicePower++;
-    state.costs.dice = Math.floor(state.costs.dice * 1.5);
-  } else if(type==='bonus'){
-    state.bonus++;
-    state.costs.bonus = Math.floor(state.costs.bonus * 1.4);
-  } else if(type==='auto'){
-    if(!state.auto){
-      state.auto = true;
-      startAuto();
-      state.costs.auto = Math.floor(state.costs.auto * 2.2);
-    }
-  } else if(type==='crit'){
-    state.crit = Math.min(100, state.crit + 5);
-    state.costs.crit = Math.floor(state.costs.crit * 1.6);
-  }
-  beep(1200,0.04,0.05);
-  render(); saveStateDebounced();
-}
-
-function startAuto(){
-  if(state.autoIntervalId) clearInterval(state.autoIntervalId);
-  state.autoIntervalId = setInterval(()=>{ roll(); }, 2000);
-}
-
-function stopAuto(){ if(state.autoIntervalId){ clearInterval(state.autoIntervalId); state.autoIntervalId=null; }}
-
-function canPrestige(){ return state.level >= 25; }
-
-function prestige(){
-  if(!canPrestige()){ showMessage('Reach level 25 to prestige'); return; }
-  // multiplier based on bestLevel
-  const bonus = Math.floor(state.bestLevel/25);
-  state.prestigeMult += Math.max(1, bonus);
-  // reset many fields
-  state.points = 0; state.dicePower=1; state.bonus=0; state.crit=0; state.auto=false; stopAuto();
-  state.level=1; state.xp=0; state.xpNeeded=20; state.totalRolls=0; state.highestRoll=0; state.totalXP=0;
-  state.costs = {dice:50,bonus:30,auto:350,crit:120};
-  showMessage('Prestiged! multiplier is now x'+state.prestigeMult);
-  beep(600,0.3,0.08);
-  saveStateDebounced(); render();
-}
-
-// ---------- ACHIEVEMENTS ----------
-const achievements = [
-  {id:'a1',name:'First Roll',desc:'Roll the dice once', check: s=> s.totalRolls>=1},
-  {id:'a2',name:'High Roller',desc:'Get a single roll >= 20', check: s=> s.highestRoll>=20},
-  {id:'a3',name:'Roller x100',desc:'Roll 100 times', check: s=> s.totalRolls>=100},
-  {id:'a4',name:'Level 10',desc:'Reach level 10', check: s=> s.level>=10},
-  {id:'a5',name:'Prestiged',desc:'Prestige once', check: s=> s.prestigeMult>1},
-];
-let unlocked = new Set();
-
-function checkAchievements(){
-  achievements.forEach(a=>{
-    if(!unlocked.has(a.id) && a.check(state)){
-      unlocked.add(a.id);
-      showMessage('Achievement: '+a.name);
-      beep(1400,0.12,0.07);
-      renderAchievements(); saveStateDebounced();
-    }
+  dots[value].forEach(d=>{
+    ctx.fillRect(d[0]-6, d[1]-6, 12, 12);
   });
 }
 
-// ---------- SAVE / LOAD ----------
-function saveState(){
-  const copy = JSON.parse(JSON.stringify(state));
-  copy.unlocked = Array.from(unlocked);
-  localStorage.setItem(SAVE_KEY, JSON.stringify(copy));
-}
-let saveTimeout=null;
-function saveStateDebounced(){ if(saveTimeout) clearTimeout(saveTimeout); saveTimeout=setTimeout(saveState,250); }
+// ==========================
+// ROLL MECHANIC
+// ==========================
+function rollDice() {
+  const maxRoll = 6 + (diceLevel-1);
+  const roll = Math.floor(Math.random()*maxRoll)+1;
+  drawDiceFace(Math.min(roll,6));
 
-function loadState(){
-  const raw = localStorage.getItem(SAVE_KEY);
-  if(!raw) { showMessage('No save found'); return; }
-  try{
-    const s = JSON.parse(raw);
-    // copy safe fields
-    for(const k in state) if(s[k]!==undefined) state[k]=s[k];
-    if(s.unlocked) unlocked = new Set(s.unlocked);
-    if(state.auto) startAuto(); else stopAuto();
-    render(); renderAchievements(); showMessage('Loaded');
-  }catch(e){ showMessage('Failed to load'); }
+  points += roll;
+  xp += roll;
+  updateUI();
+  checkLevelUp();
 }
 
-function resetAll(){ if(!confirm('Reset all progress?')) return; localStorage.removeItem(SAVE_KEY); location.reload(); }
-
-// ---------- UI ----------
-function render(){
-  el('points').textContent = Math.floor(state.points);
-  el('dicePower').textContent = state.dicePower;
-  el('level').textContent = state.level;
-  el('xp').textContent = state.xp;
-  el('xpNeeded').textContent = state.xpNeeded;
-  el('totalRolls').textContent = state.totalRolls;
-  el('highestRoll').textContent = state.highestRoll;
-  el('totalXP').textContent = state.totalXP;
-  el('prestigeMult').textContent = state.prestigeMult;
-  el('diceCost').textContent = state.costs.dice;
-  el('bonusCost').textContent = state.costs.bonus;
-  el('autoCost').textContent = state.costs.auto;
-  el('critCost').textContent = state.costs.crit;
-
-  // draw current face as nominal 1..6 based on dicePower influence (clamped)
-  const nominal = Math.max(1, Math.min(6, Math.floor(state.dicePower)));
-  drawDiceFace(nominal);
-}
-
-function renderAchievements(){
-  const container = el('achievements'); container.innerHTML='';
-  achievements.forEach(a=>{
-    const div = document.createElement('div'); div.className='ach';
-    if(!unlocked.has(a.id)) div.className+=' lock';
-    div.innerHTML = `<strong>${a.name}</strong><div class="small">${a.desc}</div>`;
-    container.appendChild(div);
-  });
-}
-
-function showMessage(t){ const m=el('message'); m.textContent = t; setTimeout(()=>{ if(m.textContent===t) m.textContent=''; },3000); }
-
-// ---------- BIND EVENTS ----------
-el('rollBtn').addEventListener('click',()=>{ roll(); });
-el('buyDiceBtn').addEventListener('click',()=>buy('dice'));
-el('buyBonusBtn').addEventListener('click',()=>buy('bonus'));
-el('buyAutoBtn').addEventListener('click',()=>buy('auto'));
-el('buyCritBtn').addEventListener('click',()=>buy('crit'));
-el('saveBtn').addEventListener('click',()=>{ saveState(); showMessage('Saved'); });
-el('loadBtn').addEventListener('click',()=>{ loadState(); });
-el('resetBtn').addEventListener('click',resetAll);
-el('prestigeBtn').addEventListener('click',prestige);
-
-// ---------- INIT ----------
-render(); renderAchievements(); checkAchievements();
-// auto start if loaded state
-if(state.auto) startAuto();
-
-// quick save before leaving
-window.addEventListener('beforeunload', saveState);
-
-  // --- Saving & Loading ---
-  function saveGame() {
-    const data = {
-      points, diceLevel, level, xp, prestige, stats, upgrades
-    };
-    localStorage.setItem('aiDiceSave', JSON.stringify(data));
+// ==========================
+// LEVEL UP
+// ==========================
+function checkLevelUp() {
+  const needed = level * 50;
+  if (xp >= needed) {
+    xp -= needed;
+    level++;
+    points += 20;
+    updateUI();
   }
+}
 
-  function loadGame() {
-    const raw = localStorage.getItem('aiDiceSave');
-    if (!raw) return;
-    try {
-      const data = JSON.parse(raw);
-      points = data.points || 0;
-      diceLevel = data.diceLevel || 1;
-      level = data.level || 1;
-      xp = data.xp || 0;
-      prestige = data.prestige || 0;
-      stats = data.stats || stats;
-      upgrades = data.upgrades || upgrades;
-    } catch (e) {
-      console.error('Save corrupted');
-    }
+// ==========================
+// SHOP
+// ==========================
+function buyDiceUpgrade() {
+  if(points >= upgradeDiceCost) {
+    points -= upgradeDiceCost;
+    diceLevel++;
+    upgradeDiceCost = Math.floor(upgradeDiceCost * 1.8);
+    updateUI();
   }
+}
 
-  function resetGame() {
-    localStorage.removeItem('aiDiceSave');
-    location.reload();
+function buyHelper() {
+  if(points >= helperCost) {
+    points -= helperCost;
+    helpers++;
+    helperCost = Math.floor(helperCost * 1.6);
+    updateUI();
   }
+}
 
-  loadGame();
-  setInterval(saveGame, 3000);
+// AUTO HELPERS
+setInterval(()=>{
+  if(helpers>0) {
+    points += helpers;
+    xp += helpers;
+    updateUI();
+    checkLevelUp();
+  }
+},1000);
+
+// ==========================
+// SAVE & LOAD
+// ==========================
+function saveGame(){
+  localStorage.setItem("aicdiceSave", JSON.stringify({
+    points,diceLevel,helpers,level,xp,prestige,
+    upgradeDiceCost,helperCost
+  }));
+}
+function loadGame(){
+  const data = localStorage.getItem("aicdiceSave");
+  if(!data) return;
+  const s = JSON.parse(data);
+  points = s.points || 0;
+  diceLevel = s.diceLevel || 1;
+  helpers = s.helpers || 0;
+  level = s.level || 1;
+  xp = s.xp || 0;
+  prestige = s.prestige || 0;
+  upgradeDiceCost = s.upgradeDiceCost || 10;
+  helperCost = s.helperCost || 25;
+  updateUI();
+}
+function resetGame(){
+  localStorage.removeItem("aicdiceSave");
+  location.reload();
+}
+
+setInterval(saveGame,3000);
+loadGame();
+
+// ==========================
+// UI UPDATE
+// ==========================
+function updateUI(){
+  document.getElementById("points").innerText = "Points: " + points;
+  document.getElementById("level").innerText = "Level: " + level;
+  document.getElementById("xp").innerText = "XP: " + xp;
+  document.getElementById("prestige").innerText = "Prestige: " + prestige;
+  document.getElementById("helpers").innerText = helpers + " helpers";
+  document.getElementById("upgradeDice").innerText = "Upgrade Dice (Cost: " + upgradeDiceCost + ")";
+  document.getElementById("buyHelper").innerText = "Hire Helper Hand (Cost: " + helperCost + ")";
+}
+
+updateUI();
 </script>
 </body>
 </html>
