@@ -38,7 +38,6 @@ canvas { image-rendering:pixelated; border:3px solid #444; margin:10px 0; }
 <h2>Achievements</h2>
 <div id="achievements"></div>
 </div>
-<button id="resetBtn">RESET SAVE</button>
 </div>
 <script>
 // =========================
@@ -123,7 +122,6 @@ function loadGame(){
   state=JSON.parse(data);
   renderShop(); updateUI();
 }
-function resetGame(){ localStorage.removeItem('aiDiceSave'); location.reload(); }
 setInterval(saveGame,3000);
 loadGame();
 
@@ -142,7 +140,6 @@ function updateUI(){
 // Event Listeners
 // =========================
 document.getElementById('rollBtn').addEventListener('click',rollDice);
-document.getElementById('resetBtn').addEventListener('click',resetGame);
 renderShop(); updateUI();
 </script>
 </body>
