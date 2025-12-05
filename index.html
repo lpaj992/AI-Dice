@@ -1,220 +1,177 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>AI Dice</title>
-  <style>
-    body {
-      background:#1b1d1e;
-      color:white;
-      font-family:"Press Start 2P", monospace;
-      image-rendering:pixelated;
-      text-align:center;
-      margin:0;
-    }
-    #game {
-      width:900px;
-      margin:auto;
-      padding:20px;
-    }
-    .panel {
-      background:#26282b;
-      padding:10px;
-      margin:10px 0;
-      border:4px solid #3d3f42;
-      border-radius:6px;
-    }
-    button {
-      background:#3d3f42;
-      border:3px solid #6f7175;
-      padding:10px;
-      font-family:"Press Start 2P";
-      color:white;
-      cursor:pointer;
-      margin:5px;
-    }
-    button:hover { background:#5a5c60; }
-    canvas { image-rendering:pixelated; }
-  </style>
+<meta charset="UTF-8">
+<title>AI Dice</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+body {
+  margin:0;
+  font-family: 'Press Start 2P', monospace;
+  background:#121212;
+  color:white;
+  text-align:center;
+  overflow-x:hidden;
+}
+#gameContainer {
+  width:900px;
+  margin:0 auto;
+  padding:20px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+.panel {
+  background:#1c1c1c;
+  border:4px solid #333;
+  border-radius:8px;
+  padding:12px;
+  margin:10px 0;
+  width:100%;
+}
+button {
+  font-family: 'Press Start 2P';
+  padding:10px;
+  margin:5px;
+  border:3px solid #555;
+  background:#2a2a2a;
+  color:white;
+  cursor:pointer;
+}
+button:hover { background:#3d3d3d; }
+canvas { image-rendering:pixelated; border:3px solid #444; margin:10px 0; }
+#shopGrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:10px; }
+.upgradeItem { background:#262626; border:2px solid #444; padding:8px; border-radius:6px; }
+</style>
 </head>
 <body>
-<div id="game">
-  <h1>AI Dice</h1>
-  
-  <canvas id="diceCanvas" width="128" height="128"></canvas>
-  <br>
-  <button id="rollBtn">ROLL</button>
-
-  <div class="panel" id="infoPanel">
-    <div id="points">Points: 0</div>
-    <div id="level">Level: 1</div>
-    <div id="xp">XP: 0</div>
-    <div id="prestige">Prestige: 0</div>
-  </div>
-
-  <div class="panel" id="shopPanel">
-    <h2>Upgrades</h2>
-    <button id="upgradeDice">Upgrade Dice (Cost: 10)</button><br>
-    <button id="buyHelper">Hire Helper Hand (Cost: 25)</button><br>
-  </div>
-
-  <div class="panel" id="helpersPanel">
-    <h2>Helpers</h2>
-    <div id="helpers">0 helpers</div>
-  </div>
-
-  <div class="panel" id="achievementsPanel">
-    <h2>Achievements</h2>
-    <div id="achievements"></div>
-  </div>
-
-  <button onclick="resetGame()">RESET SAVE</button>
+<div id="gameContainer">
+<h1>AI Dice</h1>
+<canvas id="diceCanvas" width="128" height="128"></canvas>
+<button id="rollBtn">ROLL</button>
+<div class="panel" id="statsPanel">
+  <div id="points">Points: 0</div>
+  <div id="level">Level: 1</div>
+  <div id="xp">XP: 0</div>
+  <div id="prestige">Prestige: 0</div>
 </div>
-
+<div class="panel" id="shopPanel">
+<h2>Upgrades</h2>
+<div id="shopGrid"></div>
+</div>
+<div class="panel" id="helpersPanel">
+<h2>Helpers</h2>
+<div id="helpers">0 helpers</div>
+</div>
+<div class="panel" id="achievementsPanel">
+<h2>Achievements</h2>
+<div id="achievements"></div>
+</div>
+<button id="resetBtn">RESET SAVE</button>
+</div>
 <script>
-// ==========================
-// BASIC GAME VARIABLES
-// ==========================
-let points = 0;
-let diceLevel = 1;
-let helpers = 0;
-let level = 1;
-let xp = 0;
-let prestige = 0;
+// =========================
+// Game State
+// =========================
+let state = {
+  points:0, diceLevel:1, helpers:0, level:1, xp:0, prestige:0,
+  upgradeDiceCost:10, helperCost:25,
+  shop:[], achievements:[], autoRollInterval:null
+};
 
-let upgradeDiceCost = 10;
-let helperCost = 25;
+// Initialize Shop Items
+state.shop = [
+  {name:'Upgrade Dice', cost:10, action:()=>{state.diceLevel++; state.upgradeDiceCost=Math.floor(state.upgradeDiceCost*1.8); updateUI();}},
+  {name:'Helper Hand', cost:25, action:()=>{state.helpers++; state.helperCost=Math.floor(state.helperCost*1.6); updateUI();}}
+];
 
-// ==========================
-// CANVAS PIXEL DICE RENDER
-// ==========================
-const canvas = document.getElementById("diceCanvas");
-const ctx = canvas.getContext("2d");
+// =========================
+// Dice Canvas
+// =========================
+const canvas=document.getElementById('diceCanvas');
+const ctx=canvas.getContext('2d');
+function drawDiceFace(val){
+  ctx.fillStyle='#000'; ctx.fillRect(0,0,128,128);
+  ctx.fillStyle='#fff'; ctx.fillRect(8,8,112,112);
+  ctx.fillStyle='#000';
+  const dots={1:[[64,64]],2:[[40,40],[88,88]],3:[[40,40],[64,64],[88,88]],4:[[40,40],[40,88],[88,40],[88,88]],5:[[40,40],[40,88],[64,64],[88,40],[88,88]],6:[[40,40],[40,64],[40,88],[88,40],[88,64],[88,88]]};
+  dots[val].forEach(d=>ctx.fillRect(d[0]-6,d[1]-6,12,12));
+}
 
-function drawDiceFace(value) {
-  ctx.fillStyle = "#000";
-  ctx.fillRect(0,0,128,128);
-  ctx.fillStyle = "#fff";
-  ctx.fillRect(8,8,112,112);
-  ctx.fillStyle = "#000";
+// =========================
+// Roll Mechanic
+// =========================
+function rollDice(){
+  const maxRoll=6+(state.diceLevel-1);
+  const roll=Math.floor(Math.random()*maxRoll)+1;
+  drawDiceFace(Math.min(roll,6));
+  state.points+=roll;
+  state.xp+=roll;
+  checkLevelUp();
+  updateUI();
+}
 
-  const dots = {
-    1:[[64,64]],
-    2:[[40,40],[88,88]],
-    3:[[40,40],[64,64],[88,88]],
-    4:[[40,40],[40,88],[88,40],[88,88]],
-    5:[[40,40],[40,88],[64,64],[88,40],[88,88]],
-    6:[[40,40],[40,64],[40,88],[88,40],[88,64],[88,88]]
-  };
+function checkLevelUp(){
+  const needed=state.level*50;
+  if(state.xp>=needed){ state.xp-=needed; state.level++; state.points+=20; updateUI(); }
+}
 
-  dots[value].forEach(d=>{
-    ctx.fillRect(d[0]-6, d[1]-6, 12, 12);
+// =========================
+// Shop
+// =========================
+const shopGrid=document.getElementById('shopGrid');
+function renderShop(){
+  shopGrid.innerHTML='';
+  state.shop.forEach((item,i)=>{
+    const div=document.createElement('div'); div.className='upgradeItem';
+    div.innerHTML=`<strong>${item.name}</strong><br>Cost: ${item.cost}`;
+    const btn=document.createElement('button'); btn.innerText='BUY';
+    btn.onclick=()=>{if(state.points>=item.cost){state.points-=item.cost; item.action();}};
+    div.appendChild(btn);
+    shopGrid.appendChild(div);
   });
 }
 
-// ==========================
-// ROLL MECHANIC
-// ==========================
-function rollDice() {
-  const maxRoll = 6 + (diceLevel-1);
-  const roll = Math.floor(Math.random()*maxRoll)+1;
-  drawDiceFace(Math.min(roll,6));
-
-  points += roll;
-  xp += roll;
-  updateUI();
-  checkLevelUp();
-}
-
-// ==========================
-// LEVEL UP
-// ==========================
-function checkLevelUp() {
-  const needed = level * 50;
-  if (xp >= needed) {
-    xp -= needed;
-    level++;
-    points += 20;
-    updateUI();
-  }
-}
-
-// ==========================
-// SHOP
-// ==========================
-function buyDiceUpgrade() {
-  if(points >= upgradeDiceCost) {
-    points -= upgradeDiceCost;
-    diceLevel++;
-    upgradeDiceCost = Math.floor(upgradeDiceCost * 1.8);
-    updateUI();
-  }
-}
-
-function buyHelper() {
-  if(points >= helperCost) {
-    points -= helperCost;
-    helpers++;
-    helperCost = Math.floor(helperCost * 1.6);
-    updateUI();
-  }
-}
-
-// AUTO HELPERS
+// =========================
+// Auto Helpers
+// =========================
 setInterval(()=>{
-  if(helpers>0) {
-    points += helpers;
-    xp += helpers;
-    updateUI();
-    checkLevelUp();
-  }
+  if(state.helpers>0){ state.points+=state.helpers; state.xp+=state.helpers; checkLevelUp(); updateUI(); }
 },1000);
 
-// ==========================
-// SAVE & LOAD
-// ==========================
+// =========================
+// Save & Load
+// =========================
 function saveGame(){
-  localStorage.setItem("aicdiceSave", JSON.stringify({
-    points,diceLevel,helpers,level,xp,prestige,
-    upgradeDiceCost,helperCost
-  }));
+  localStorage.setItem('aiDiceSave', JSON.stringify(state));
 }
 function loadGame(){
-  const data = localStorage.getItem("aicdiceSave");
+  const data=localStorage.getItem('aiDiceSave');
   if(!data) return;
-  const s = JSON.parse(data);
-  points = s.points || 0;
-  diceLevel = s.diceLevel || 1;
-  helpers = s.helpers || 0;
-  level = s.level || 1;
-  xp = s.xp || 0;
-  prestige = s.prestige || 0;
-  upgradeDiceCost = s.upgradeDiceCost || 10;
-  helperCost = s.helperCost || 25;
-  updateUI();
+  state=JSON.parse(data);
+  renderShop(); updateUI();
 }
-function resetGame(){
-  localStorage.removeItem("aicdiceSave");
-  location.reload();
-}
-
+function resetGame(){ localStorage.removeItem('aiDiceSave'); location.reload(); }
 setInterval(saveGame,3000);
 loadGame();
 
-// ==========================
-// UI UPDATE
-// ==========================
+// =========================
+// UI Update
+// =========================
 function updateUI(){
-  document.getElementById("points").innerText = "Points: " + points;
-  document.getElementById("level").innerText = "Level: " + level;
-  document.getElementById("xp").innerText = "XP: " + xp;
-  document.getElementById("prestige").innerText = "Prestige: " + prestige;
-  document.getElementById("helpers").innerText = helpers + " helpers";
-  document.getElementById("upgradeDice").innerText = "Upgrade Dice (Cost: " + upgradeDiceCost + ")";
-  document.getElementById("buyHelper").innerText = "Hire Helper Hand (Cost: " + helperCost + ")";
+  document.getElementById('points').innerText='Points: '+state.points;
+  document.getElementById('level').innerText='Level: '+state.level;
+  document.getElementById('xp').innerText='XP: '+state.xp;
+  document.getElementById('prestige').innerText='Prestige: '+state.prestige;
+  document.getElementById('helpers').innerText=state.helpers+' helpers';
 }
 
-updateUI();
+// =========================
+// Event Listeners
+// =========================
+document.getElementById('rollBtn').addEventListener('click',rollDice);
+document.getElementById('resetBtn').addEventListener('click',resetGame);
+renderShop(); updateUI();
 </script>
 </body>
 </html>
